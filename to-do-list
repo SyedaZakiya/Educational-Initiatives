@@ -1,0 +1,137 @@
+@author: syeda
+"""
+
+from datetime import datetime
+import logging
+
+# Logging configuration
+logging.basicConfig(filename='todolist.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Task class using the Builder Pattern
+class Task:
+    def __init__(self, description, due_date=None, tags=None):
+        self.description = description
+        self.completed = False
+        self.due_date = due_date
+        self.tags = tags or []
+
+    def mark_completed(self):
+        self.completed = True
+
+    def __str__(self):
+        status = "Completed" if self.completed else "Pending"
+        due_date = f", Due: {self.due_date}" if self.due_date else ""
+        tags = f", Tags: {', '.join(self.tags)}" if self.tags else ""
+        return f"{self.description} - {status}{due_date}{tags}"
+
+# Memento Pattern to save and restore task states
+class TaskMemento:
+    def __init__(self, task):
+        self.state = task.__dict__.copy()
+
+# Caretaker to manage task history
+class TaskHistory:
+    def __init__(self, task):
+        self.history = []
+        self.task = task
+
+    def save(self):
+        memento = TaskMemento(self.task)
+        self.history.append(memento)
+
+    def undo(self):
+        if self.history:
+            memento = self.history.pop()
+            self.task.__dict__.update(memento.state)
+
+# To-Do List Manager
+class ToDoListManager:
+    def __init__(self):
+        self.tasks = []
+
+    def add_task(self, task):
+        self.tasks.append(task)
+
+    def delete_task(self, task_description):
+        self.tasks = [task for task in self.tasks if task.description != task_description]
+
+    def view_tasks(self, filter_option):
+        if filter_option == "Show all":
+            return self.tasks
+        elif filter_option == "Show completed":
+            return [task for task in self.tasks if task.completed]
+        elif filter_option == "Show pending":
+            return [task for task in self.tasks if not task.completed]
+
+# Function to create a task
+def create_task():
+    description = input("Enter task description: ")
+    due_date = input("Enter due date (optional): ")
+    tags = input("Enter tags (comma-separated, optional): ").split(", ")
+    task = Task(description, due_date, tags)
+    return task
+
+# Main function
+if __name__ == "__main__":
+    manager = ToDoListManager()
+
+    while True:
+        print("\nOptions:")
+        print("1. Add Task")
+        print("2. Delete Task")
+        print("3. View Tasks")
+        print("4. Mark Task as Completed")
+        print("5. Undo")
+        print("6. Quit")
+        choice = input("Enter your choice: ")
+
+        if choice == "1":
+            task = create_task()
+            manager.add_task(task)
+            print("Task added successfully!")
+            logging.info(f"Task added: {task.description}")
+
+        elif choice == "2":
+            task_description = input("Enter task description to delete: ")
+            manager.delete_task(task_description)
+            print(f"Task '{task_description}' deleted!")
+            logging.info(f"Task deleted: {task_description}")
+
+        elif choice == "3":
+            filter_option = input("Enter filter option (Show all/Show completed/Show pending): ")
+            tasks = manager.view_tasks(filter_option)
+            if tasks:
+                print("\nTasks:")
+                for i, task in enumerate(tasks, 1):
+                    print(f"{i}. {task}")
+            else:
+                print("No tasks to display.")
+                logging.warning("No tasks to display.")
+
+        elif choice == "4":
+            task_description = input("Enter task description to mark as completed: ")
+            for task in manager.tasks:
+                if task.description == task_description:
+                    task.mark_completed()
+                    task_history = TaskHistory(task)
+                    task_history.save()
+                    print(f"Task '{task_description}' marked as completed!")
+                    logging.info(f"Task marked as completed: {task_description}")
+                    break
+            else:
+                print(f"Task '{task_description}' not found.")
+                logging.warning(f"Task not found: {task_description}")
+
+        elif choice == "5":
+            for task in manager.tasks:
+                task_history = TaskHistory(task)
+                task_history.undo()
+            print("Undo successful!")
+            logging.info("Undo successful.")
+
+        elif choice == "6":
+            break
+
+        else:
+            print("Invalid choice. Please try again.")
+            logging.error("Invalid choice.")
